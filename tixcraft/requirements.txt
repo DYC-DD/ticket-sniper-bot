@@ -1,0 +1,12 @@
+certifi                  # 提供最新的 CA 憑證集合，確保 HTTPS 連線時伺服器是可信任的
+chardet                  # 自動偵測文字編碼格式（如 UTF-8、Big5）
+cryptography             # 提供加解密、SSL 憑證處理、簽章、金鑰等安全模組功能
+idna                     # 處理國際化網域名稱（IDN）轉換，支援中文網址與 Punycode
+selenium>=4.0.0          # 操控瀏覽器進行自動化操作（模擬點擊、輸入、送出等）
+selenium-stealth         # 隱藏 Selenium 操作特徵，避免被網站偵測為機器人
+undetected-chromedriver  # 避開網站反爬蟲機制的加強版 Chrome 驅動程式
+pyperclip                # 控制系統剪貼簿，可自動複製或貼上文字內容
+ddddocr                  # OCR 圖片文字辨識工具，用來破解驗證碼圖片
+urllib3>=1.21.1          # 進階 HTTP 連線庫，支援 HTTPS、連線池，為 requests 底層依賴
+numpy<2.0.0              # 高效數值與陣列運算函式庫，支援影像處理與 AI 模組使用
+daal==2021.4.0           # Intel DAAL 數據分析加速庫，提升影像辨識與運算效能（需注意平台相容性）
