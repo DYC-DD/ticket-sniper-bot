@@ -2,18 +2,18 @@ import os
 from pathlib import Path
 
 import torch
-from dataset import CaptchaDataset
-from model import CaptchaModel
+from data.dataset import CaptchaDataset
+from model.model import CaptchaModel
+from model.utils import CHARACTER_SET, decode_prediction
 from torch.nn import CTCLoss
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
-from utils import CHARACTER_SET, decode_prediction
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-csv_path = BASE_DIR / "ocr_captcha_dataset" / "dataset" / "labels.csv"
-img_dir = BASE_DIR / "ocr_captcha_dataset" / "dataset" / "images"
-output_dir = BASE_DIR / "output"
+csv_path = BASE_DIR / "data" / "captcha_generate" / "labels.csv"
+img_dir = BASE_DIR / "data" / "captcha_generate" / "images"
+output_dir = BASE_DIR / "models"
 os.makedirs(output_dir, exist_ok=True)
 
 # 加強資料增強：訓練 vs 驗證
@@ -124,14 +124,14 @@ def train():
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             counter = 0
-            torch.save(model.state_dict(), output_dir / "best_model.pth")
+            torch.save(model.state_dict(), output_dir / "ocr_model.pth")
         else:
             counter += 1
             if counter >= patience:
                 print("EarlyStopping!")
                 break
 
-    print("訓練結束，最佳模型已儲存。")
+    print("訓練結束，模型已儲存。")
 
 
 if __name__ == "__main__":

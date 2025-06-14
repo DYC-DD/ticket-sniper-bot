@@ -3,16 +3,20 @@ from pathlib import Path
 
 import pandas as pd
 import torch
-from model import CaptchaModel
+from model.model import CaptchaModel
+from model.utils import CHARACTER_SET, decode_prediction
 from PIL import Image
 from torchvision import transforms
-from utils import CHARACTER_SET, decode_prediction
 
 # ----- 路徑設定 -----
-BASE_DIR = Path(__file__).resolve().parent.parent
-IMG_DIR = BASE_DIR / "ocr_captcha_dataset" / "dataset" / "images"
-LABEL_CSV = BASE_DIR / "ocr_captcha_dataset" / "dataset" / "labels.csv"
-MODEL_PATH = BASE_DIR / "output" / "best_model.pth"  # EarlyStopping 儲存的檔名
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+DATA_DIR = PROJECT_ROOT / "data" / "captcha_generate"
+
+IMG_DIR = DATA_DIR / "images"
+LABEL_CSV = DATA_DIR / "labels.csv"
+MODEL_PATH = PROJECT_ROOT / "models" / "ocr_model.pth"
+
 
 # ----- 圖片 Preprocess （要和 train 時一致） -----
 transform = transforms.Compose(
@@ -76,7 +80,7 @@ def main():
         batch_evaluate(model, device)
     else:
         # 單張預測
-        img_path = Path(args.image) if args.image else IMG_DIR / "captcha_1361.png"
+        img_path = Path(args.image) if args.image else IMG_DIR / "captcha_0001.png"
         if not img_path.exists():
             raise FileNotFoundError(f"找不到圖片：{img_path}")
         pred = predict_one(img_path, model, device)
