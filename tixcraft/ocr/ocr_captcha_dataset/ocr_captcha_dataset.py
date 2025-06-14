@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw, ImageFont
 from tqdm import tqdm
 
 # ===== 參數設定 =====
-NUM_IMAGES = 10  # 圖片總數
+NUM_IMAGES = 10000  # 圖片總數
 IMG_SIZE: Tuple[int, int] = (120, 100)  # 單張圖片像素
 BG_COLOR: str = "#036CDF"  # 圖片背景顏色
 FONT_COLOR: str = "#FFFFFF"  # 字體顏色
@@ -90,7 +90,7 @@ def generate_dataset():
         for idx in tqdm(range(1, NUM_IMAGES + 1), desc="產生驗證碼圖片中"):
             text = random_text()
             img = compose_captcha(text, IMG_SIZE)
-            fname = f"captcha_{idx}.png"
+            fname = f"captcha_{idx:04d}.png"
             img.save(IMAGE_DIR / fname, format="PNG", optimize=True)
             writer.writerow([fname, text])
 
