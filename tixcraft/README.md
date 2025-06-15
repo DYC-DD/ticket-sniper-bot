@@ -9,8 +9,9 @@
 5. `勾選` 已詳細閱讀...
 6. `輸入驗證碼`
 7. 點擊 `確認張數`
+   > 如果 `輸入驗證碼` 輸入錯誤，跳回第 4 步驟
 
-> [拓元搶票練習小工具](https://ticket-training.onrender.com/)
+[拓元搶票練習小工具](https://ticket-training.onrender.com/)
 
 ## Tixcraft 網站架構
 
