@@ -192,3 +192,7 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+# 模型訓練資料集
+tixcraft/ocr/data/captcha_crawler
+tixcraft/ocr/data/captcha_generate

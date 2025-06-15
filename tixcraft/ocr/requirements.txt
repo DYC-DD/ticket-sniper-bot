@@ -1,0 +1,6 @@
+torch>=2.0.0           # PyTorch 主框架
+torchvision>=0.15.0    # 圖片轉換與 Dataset 支援
+pandas>=1.5.0          # 讀取 labels.csv
+Pillow>=9.0.0          # 讀取 PNG 圖片
+tqdm>=4.65.0           # 訓練時的進度列
+seaborn
