@@ -1,4 +1,5 @@
 import os
+import time
 from pathlib import Path
 
 import torch
@@ -54,6 +55,9 @@ def train():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("使用裝置：", device)
 
+    # 開始計時
+    start = time.perf_counter()
+
     full_ds = CaptchaDatasetWithAug(csv_path, img_dir, train_transform)
     val_size = int(len(full_ds) * 0.2)
     train_ds, val_ds = random_split(full_ds, [len(full_ds) - val_size, val_size])
@@ -93,8 +97,11 @@ def train():
         # ———— validate ————
         model.eval()
         val_loss = 0
-        correct = 0
-        total = 0
+        seq_correct = 0
+        char_correct = 0
+        seq_total = 0
+        char_total = 0
+
         with torch.no_grad():
             for imgs, labels, L in val_loader:
                 imgs, labels = imgs.to(device), labels.to(device)
@@ -106,17 +113,25 @@ def train():
                     outputs, labels, input_lens, torch.tensor(L)
                 ).item()
                 preds = decode_prediction(outputs)
-                # 計算 Sequence-level 準確
-                for p, t in zip(
-                    preds, val_loader.dataset.dataset.data["label"].iloc[: len(preds)]
-                ):
-                    correct += p == t
-                    total += 1
+
+                # Ground truth labels（根據 val_loader dataset）
+                targets = val_loader.dataset.dataset.data["label"].iloc[: len(preds)]
+
+                for p, t in zip(preds, targets):
+                    seq_correct += p == t
+                    seq_total += 1
+                    for pc, tc in zip(p, t):
+                        if pc == tc:
+                            char_correct += 1
+                    char_total += max(len(p), len(t))
+
         val_loss /= len(val_loader)
-        val_acc = correct / total
+        val_seq_acc = seq_correct / seq_total
+        val_char_acc = char_correct / char_total if char_total > 0 else 0
 
         print(
-            f"Epoch {epoch:02d} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.3f}"
+            f"Epoch {epoch:02d}｜訓練損失 (Train Loss): {train_loss:.4f}｜驗證損失 (Val Loss): {val_loss:.4f}｜"
+            + f"字元準確率 (Char Acc): {val_char_acc:.2%} ｜ 字串準確率 (Seq Acc): {val_seq_acc:.3f}"
         )
 
         # Scheduler & EarlyStopping
@@ -128,10 +143,19 @@ def train():
         else:
             counter += 1
             if counter >= patience:
-                print("EarlyStopping!")
+                print("\n提前停止!")
                 break
 
-    print("訓練結束，模型已儲存。")
+    print("\n訓練結束，模型已儲存。")
+
+    # 結束計時
+    end = time.perf_counter()
+    elapsed = end - start
+    hours = int(elapsed // 3600)
+    minutes = int((elapsed % 3600) // 60)
+    seconds = int(elapsed % 60)
+
+    print(f"\n🕒 訓練總耗時：{hours} 小時 {minutes} 分 {seconds} 秒")
 
 
 if __name__ == "__main__":

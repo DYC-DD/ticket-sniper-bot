@@ -1,16 +1,157 @@
-# **光學字元辨識 (OCR) 總覽**
+# 驗證碼 OCR 系統：CNN + BiLSTM + CTC
+
+本專案為一套穩定且模組化的光學字元辨識（OCR）系統，能準確辨識由 4 個小寫英文字母組成的驗證碼圖片。模型架構採用卷積神經網路（CNN）、雙向長短期記憶網路（BiLSTM）與 CTC（Connectionist Temporal Classification）損失函數，支援端到端訓練，無需額外字元切割處理。
+
+## 專案簡介
+
+- **任務目標：** 辨識含有干擾的 4 字母驗證碼圖片
+- **模型架構：** CNN + BiLSTM + CTC Loss
+- **資料來源：** 自動生成的驗證碼影像
+- **支援字元集：** `a` 到 `z` 共 26 種小寫英文字母
+
+## 模型架構說明
+
+- **CNN 編碼器：**
+
+  - 三層卷積區塊提取空間特徵
+  - 使用 MaxPooling、BatchNorm 穩定訓練與降維
+
+- **全連接層 + 時序重組：**
+
+  - 將 CNN 輸出重組為時序格式，作為 RNN 輸入
+
+- **BiLSTM 解碼器：**
+
+  - 雙向 LSTM 擷取前後序列上下文資訊
+
+- **CTC 輸出層：**
+
+  - 使用線性層投影至字元機率
+  - 搭配 CTC Loss 自動對齊預測與真實字串
+
+## 專案結構
+
+```bash
+ocr/                                 # 開發 OCR 模型辨識驗證碼
+├── data/
+│   ├── captcha_crawler/             # 爬蟲蒐集來的驗證碼圖片
+│   │   └── captcha_0001.png
+│   ├── captcha_generate/            # 自動生成的驗證碼訓練資料
+│   │   └── labels.csv               # 圖片對應標籤
+│   ├── font/
+│   │   ├── OFL.txt                  # 字體授權（Open Font License）
+│   │   ├── Spicy_Rice.html          # 字體說明 HTML
+│   │   └── SpicyRice-Regular.ttf    # 字型檔案
+│   └── README.md
+├── models/
+│   └── ocr_model.pth                # 儲存 CNN+LSTM 訓練完成模型
+├── notebook/
+│   ├── 01_data_overview.ipynb       # 資料初探
+│   ├── 02_model_inference.ipynb     # 推論展示與可視化
+│   ├── 03_batch_evaluation.ipynb    # 模型準確率評估
+│   └── 04_error_analysis.ipynb      # 錯誤樣本分析
+├── output/
+│   └── wrong_predictions.csv        # 錯誤預測清單
+├── src/
+│   ├── data/
+│   │   ├── captcha_crawler.py       # 驗證碼圖片爬蟲
+│   │   ├── captcha_generate.py      # 自動產生驗證碼圖與標籤
+│   │   └── dataset.py               # Dataset 定義（轉換、標籤編碼）
+│   ├── model/
+│   │   ├── model.py                 # CNN+LSTM 模型結構定義
+│   │   └── utils.py                 # 字元表、CTC 解碼工具
+│   ├── infer.py                     # 模型推論與驗證
+│   └── train.py                     # 模型訓練主程式
+├── README.md
+└── requirements.txt
+```
+
+## 資料集格式說明
+
+- **圖片尺寸：** 120 x 100 像素（寬 x 高）
+- **每張字元數：** 4 個小寫英文字母
+- **字型：** Spicy Rice（開源授權）
+- **背景顏色：** 藍色 `#036CDF`
+- **字體顏色：** 白色 `#FFFFFF`
+- **干擾效果：** 隨機旋轉、縮放與重疊
+
+## 技術細節
+
+- 框架：**PyTorch**
+- 圖像處理：**Pillow**, **Torchvision**
+- 資料增強：訓練與驗證使用不同 transform 策略
+- 模型載入：支援 PyTorch 2.3+ 的 `weights_only=True`
+
+```bash
+┌────────────┐
+│ train.py   │◀────────────────────┐
+└────────────┘                     │
+        │                          │
+        ▼                          ▼
+┌──────────────┐         ┌────────────────┐
+│ dataset.py   │◀──────▶│ CaptchaDataset │
+└──────────────┘         └────────────────┘
+        │                          ▲
+        ▼                          │
+┌──────────────┐         ┌────────────────┐
+│ model.py     │◀──────▶│ CaptchaModel   │
+└──────────────┘         └────────────────┘
+        ▲                          ▲
+        │                          │
+┌──────────────┐         ┌───────────────────┐
+│ utils.py     │◀──────▶│ decode_prediction │
+└──────────────┘         └───────────────────┘
+        ▲
+        │
+┌──────────────┐
+│ infer.py     │▶─ 單張/批次推論
+└──────────────┘
+```
+
+## 訓練模型
+
+- 使用 PyTorch 框架進行訓練
+- 自動載入 data/captcha_generate/labels.csv 與圖片資料
+- 影像預處理包含：灰階轉換、Resize、隨機仿射變換（旋轉、平移、縮放）、色彩擾動、轉換為 Tensor
+- 資料切分：訓練集 / 驗證集 = 8:2
+- 優化器：AdamW，學習率預設為 1e-3
+- 學習率調整策略：每 10 epoch 衰減為原來的一半（StepLR）
+- 使用 CTC Loss 處理變長字串的比對與訓練
+- 模型預設訓練最多 50 epoch，若驗證損失無改善達 5 次則啟用 EarlyStopping
+- 訓練過程會即時輸出：訓練損失、驗證損失、驗證準確率（整體字串比對）
+- 訓練完成後自動儲存最佳模型權重於 models/ocr_model.pth
+
+## 評估方式
+
+- 字串級準確率（Sequence-Level Accuracy）：
+  - 模型每張圖片輸出一串預測字串，與真實標籤完全相符視為正確。
+  - 評估的是整體字串的正確率，而非逐字準確率，反映實際使用場景（整串輸入驗證碼）。
+- CTC 解碼策略：
+  - 模型輸出為 time-series logits，經 log_softmax 處理後進行解碼
+  - 使用 CTC greedy decoding：移除重複字元與 blank 預測（blank index = 0）
+- 推論驗證方式：
+  - 單張推論：指定圖片檔案進行輸出（ `-i` 參數）
+  - 批次驗證：讀取 labels.csv 對所有圖片進行推論與比對（ `--batch` ）
+  - 顯示正確預測數量、總樣本數與整體準確率（Accuracy %）
+
+## 基本知識與概念
+
+### 光學字元辨識 (OCR) 總覽
 
 **光學字元辨識（Optical Character Recognition, OCR）** 是一種將影像中的文字內容轉換為電腦可理解、可儲存與可搜尋的文字資料的技術。透過 OCR，電腦能夠模擬人眼與人腦的行為來「閱讀」文字影像，如掃描的文件、街景照片、書寫筆跡、印刷報表等，進而轉換為可編輯、可分析的數位文字。
 
-OCR 廣泛應用於：
+<details>
+<summary><strong> OCR 廣泛應用 </strong></summary>
 
 - 文件自動化輸入（如發票、表單、契約的掃描識別）
 - 車牌辨識（ALPR）
 - 金融票據處理（如支票）
 - 數位化歷史書籍與報紙
 - 螢幕文字擷取、機器翻譯與輔助工具
+</details>
 
-### **傳統 OCR 流程與限制**
+<details>
+<summary><strong> 傳統 OCR 流程 </strong></summary>
 
 傳統 OCR 方法主要採用規則式影像處理技術與分類器模型，依賴逐步管線處理方式：
 
@@ -20,7 +161,10 @@ OCR 廣泛應用於：
 4. **字元辨識（Character Recognition）**：使用機器學習模型（如 SVM、KNN）或模板匹配進行辨識。
 5. **後處理**：根據語言規則與字典檢查進行錯誤修正，例如拼字校正、語法修復等。
 
-**限制與挑戰**：
+</details>
+
+<details>
+<summary><strong> 限制與挑戰 </strong></summary>
 
 - 字元分割對手寫、連體字、多樣化字體極度敏感。
 - 任何前段步驟的誤差都會累積至最終輸出。
@@ -28,13 +172,14 @@ OCR 廣泛應用於：
 
 這使得傳統 OCR 方法在真實世界應用中表現有限，因此近年來逐漸被深度學習模型取代。
 
----
+</details>
 
-# CNN + LSTM + CTC 架構原理
+### CNN + LSTM + CTC 架構原理
 
 這種架構整合了三種強大的技術，使其能夠直接從輸入的文字影像，一次性地輸出整串文字序列，無需進行麻煩的字元切割。
 
-## 1\. 卷積神經網路 (CNN) - 特徵擷取器
+<details>
+<summary><strong> 1. 卷積神經網路 (CNN) - 特徵擷取器 </strong></summary>
 
 **功能**：CNN 的主要任務是從輸入的影像中 **擷取高維度的視覺特徵 (Visual Features)**。
 
@@ -46,7 +191,10 @@ OCR 廣泛應用於：
 
 在 OCR 任務中，輸入的文字影像會先經過一個深度 CNN (例如 VGG、ResNet 或客製化的小型 CNN)。這個網路的輸出不再是一個單一的分類結果，而是一系列的 **特徵序列 (Feature Sequence)**。通常，我們會將影像縮放至固定高度，但保留可變的寬度。CNN 處理後，會輸出一系列沿著影像寬度方向排列的特徵向量。每個特徵向量可以看作是影像中一個垂直切片 (frame) 的抽象表示。
 
-## 2\. 長短期記憶模型 (LSTM) - 序列資訊處理器
+</details>
+
+<details>
+<summary><strong> 2. 長短期記憶模型 (LSTM) - 序列資訊處理器 </strong></summary>
 
 **功能**：LSTM 是一種遞歸神經網路 (Recurrent Neural Network, RNN)，特別擅長 **處理和學習序列資料中的上下文關聯性 (Contextual Dependency)**。
 
@@ -58,7 +206,10 @@ OCR 廣泛應用於：
 
 LSTM 層會接收 CNN 產生的特徵序列，並輸出一個新的序列。這個新序列的每個時間步都包含更豐富的上下文資訊，為最後的文字預測做準備。
 
-## 3\. 連結主義時間分類 (CTC) - 對齊與解碼器
+</details>
+
+<details>
+<summary><strong> 3. 連結主義時間分類 (CTC) - 對齊與解碼器 </strong></summary>
 
 **功能**：CTC 損失函數是這個架構的精髓所在。它解決了 **輸入特徵序列與輸出文字標籤之間對齊 (Alignment) 的問題**，讓我們無需手動分割字元。
 
@@ -86,11 +237,11 @@ CNN+LSTM 輸出的結果是一個機率分佈序列，其長度與 CNN 輸出的
 - **對齊自由**：模型會自動學習如何將影像特徵與文字標籤對齊。
 - **性能優越**：對於不規則、手寫或藝術字體，其表現遠超傳統方法。
 
-## 總結
+</details>
+
+### 總結
 
 **CNN + LSTM + CTC** 架構徹底改變了 OCR 技術。它將 OCR 從一個複雜的多階段流程，轉變為一個統一、端到端的深度學習任務。
-
-**整體流程摘要**
 
 輸入影像 → CNN 擷取特徵 → LSTM 建立上下文 → CTC 解碼與學習對齊
 
